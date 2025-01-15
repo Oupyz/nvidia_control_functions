@@ -11,19 +11,20 @@
 import os
 import pynvml as nv
 import sys
+import time
 
 nv.nvmlInit()
-handle = nv.nvmlDeviceGetHandleByIndex(0)
-gpu_name = nv.nvmlDeviceGetName(handle)
-fan_count = nv.nvmlDeviceGetNumFans(handle)
-gpu_temperature = nv.nvmlDeviceGetTemperature(handle, nv.NVML_TEMPERATURE_GPU)
+gpu_id = nv.nvmlDeviceGetHandleByIndex(0)
+gpu_name = nv.nvmlDeviceGetName(gpu_id)
+fan_count = nv.nvmlDeviceGetNumFans(gpu_id)
+gpu_temperature = nv.nvmlDeviceGetTemperature(gpu_id, nv.NVML_TEMPERATURE_GPU)
 driver_version = nv.nvmlSystemGetDriverVersion()
 
-def read_offset_core(prompt: str) -> int:
+def read_offset_core(yourinput: str) -> int:
     """Prompt the user for an integer input."""
     while True:
         try:
-            return int(input(prompt))
+            return int(input(yourinput))
         except ValueError:
             print("Invalid input. Please enter an integer value.")
 
@@ -31,7 +32,7 @@ def gpu_core_clock_control() -> None:
     """Adjust the GPU core clock offset."""
     clock = read_offset_core("Enter core clock offset in MHz: ")
     try:
-        nv.nvmlDeviceSetGpcClkVfOffset(handle, clock)
+        nv.nvmlDeviceSetGpcClkVfOffset(gpu_id, clock)
         print(f"Core clock offset set to {clock} MHz.")
     except nv.NVMLError as e:
         print(f"Failed to set core clock offset: {str(e)}")
@@ -40,7 +41,7 @@ def gpu_memory_clock_control() -> None:
     """Adjust the GPU memory clock offset."""
     mem_clock = read_offset_core("Enter memory clock offset in MHz: ")
     try:
-        nv.nvmlDeviceSetMemClkVfOffset(handle, mem_clock)
+        nv.nvmlDeviceSetMemClkVfOffset(gpu_id, mem_clock)
         print(f"Memory clock offset set to {mem_clock} MHz.")
     except nv.NVMLError as e:
         print(f"Failed to set memory clock offset: {str(e)}")
@@ -54,14 +55,19 @@ def fan_control() -> None:
         print("Invalid input. Fan speed must be between 0 and 100.")
     try:
         for i in range(fan_count):
-            nv.nvmlDeviceSetFanSpeed_v2(handle, i, fan_speed)
+            nv.nvmlDeviceSetFanSpeed_v2(gpu_id, i, fan_speed)
         print(f"Fan speed set to {fan_speed}%.")
     except nv.NVMLError as e:
         print(f"Failed to set fan speed: {str(e)}")
 
 def auto_fan_control_based_on_temp() -> None:
     """Automatically adjust fan speed based on GPU temperature."""
-    try:
+    
+    print(f"\n""Press Crtl+C for the auto fan speed adjustment based on your gpu temps .")
+    
+    while True:
+     time.sleep(10)   
+     try:
         if gpu_temperature <= 30:
             fan_speed: int  = 30
         elif gpu_temperature <= 40:
@@ -74,13 +80,12 @@ def auto_fan_control_based_on_temp() -> None:
             fan_speed: int  = 90
         else:
             fan_speed: int  = 55
-
+    
         for i in range(fan_count):
-            nv.nvmlDeviceSetFanSpeed_v2(handle, i, fan_speed)
-        print(f"Auto fan control set to {fan_speed}% based on temperature.")
-    except nv.NVMLError as e:
+            nv.nvmlDeviceSetFanSpeed_v2(gpu_id, i, fan_speed)
+     except nv.NVMLError as e:
         print(f"Failed to set fan speed: {str(e)}")
-
+     
 def menu() -> None:
     """Display the menu and process user input."""
     while True:
@@ -121,7 +126,7 @@ if __name__ == "__main__":
     if os.environ.get("XDG_SESSION_TYPE") == "wayland":
         print("Warning: You are running under Wayland. Root permission is needed.")
     elif os.environ.get("XDG_SESSION_TYPE") == "x11":
-        print("You are running under X11. Root permission is not needed.")
+        print("You are running under X11, Root permission is not needed.")
     elif sys.platform == "win32":
         print("You are running under Windows.")
     elif sys.platform == "darwin":
