@@ -12,6 +12,7 @@ import os
 import pynvml as nv
 import sys
 import time
+import subprocess as sb 
 
 nv.nvmlInit()
 gpu_id = nv.nvmlDeviceGetHandleByIndex(0)
@@ -19,6 +20,21 @@ gpu_name = nv.nvmlDeviceGetName(gpu_id)
 fan_count = nv.nvmlDeviceGetNumFans(gpu_id)
 gpu_temperature = nv.nvmlDeviceGetTemperature(gpu_id, nv.NVML_TEMPERATURE_GPU)
 driver_version = nv.nvmlSystemGetDriverVersion()
+
+def check_dependencies() -> bool:
+    pip3_cmd: str = "pip3"
+    print("Checking For Dependencies")
+    cmd =  sb.run([pip3_cmd, "show", "pynvml"], capture_output=True, text=True)
+     if cmd.returncode == 0:
+         return True 
+    else:
+     install_missing_files =  sb.run([pip3_cmd, "install", "pynvml"])
+     if install_missing_files.returncode == 0:
+         print("Installation the missing dependencies  ")
+         return True
+     else:
+         print("Installation Failed...Exiting.")
+         return False
 
 def read_offset_core(yourinput: str) -> int:
     """Prompt the user for an integer input."""
@@ -88,6 +104,8 @@ def auto_fan_control_based_on_temp() -> None:
      
 def menu() -> None:
     """Display the menu and process user input."""
+    check_dependencies()
+    
     while True:
         print("\nMenu:")
         print("1. Set Core Clock Offset")
