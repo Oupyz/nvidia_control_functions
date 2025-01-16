@@ -5,7 +5,7 @@
 # Written by Elias Dadde 
 # email: walkonfire81@yahoo.com
 # github: github.com/Oupyz/Elias
-# version 0.1
+# version 0.2
 
 
 import os
@@ -18,20 +18,25 @@ nv.nvmlInit()
 gpu_id = nv.nvmlDeviceGetHandleByIndex(0)
 gpu_name = nv.nvmlDeviceGetName(gpu_id)
 fan_count = nv.nvmlDeviceGetNumFans(gpu_id)
-gpu_temperature = nv.nvmlDeviceGetTemperature(gpu_id, nv.NVML_TEMPERATURE_GPU)
 driver_version = nv.nvmlSystemGetDriverVersion()
+
+def restarting_script() -> None:
+    script_path: str = os.path.abspath(__file__)
+    cmd = sys.executable
+    sb.run([cmd, script_path], capture_output=True, text=True)
 
 def check_dependencies() -> bool:
     pip3_cmd: str = "pip3"
     print("Checking For Dependencies")
     cmd =  sb.run([pip3_cmd, "show", "pynvml"], capture_output=True, text=True)
-     if cmd.returncode == 0:
+    if cmd.returncode == 0:
          return True 
     else:
      install_missing_files =  sb.run([pip3_cmd, "install", "pynvml"])
      if install_missing_files.returncode == 0:
-         print("Installation the missing dependencies  ")
-         return True
+         print("Installation the missing dependencies... Restarting The Script")
+         restarting_script()
+         sys.exit(0)
      else:
          print("Installation Failed...Exiting.")
          return False
@@ -83,6 +88,7 @@ def auto_fan_control_based_on_temp() -> None:
     
     while True:
      time.sleep(10)   
+     gpu_temperature = nv.nvmlDeviceGetTemperature(gpu_id, nv.NVML_TEMPERATURE_GPU)
      try:
         if gpu_temperature <= 30:
             fan_speed: int  = 30
@@ -95,7 +101,7 @@ def auto_fan_control_based_on_temp() -> None:
         elif gpu_temperature <= 70:
             fan_speed: int  = 90
         else:
-            fan_speed: int  = 55
+            fan_speed: int  = 100
     
         for i in range(fan_count):
             nv.nvmlDeviceSetFanSpeed_v2(gpu_id, i, fan_speed)
@@ -151,3 +157,4 @@ if __name__ == "__main__":
         print("You are running under MacOS.")
 
     main()
+    
