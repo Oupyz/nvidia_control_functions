@@ -30,59 +30,67 @@ def restarting_script() -> None:
     sb.run([cmd, script_path], capture_output=True, text=True)
     
 def check_dependencies() -> bool:
-  
-    pip_cmd = "pip3"
-    dependency = "pynvml"
-    os_check_cmd = "hostnamectl"
-    os_match = "openSUSE"
+    pip_cmd: str = "pip3"
+    dependency: str  = "pynvml"
+    os_check_cmd: str = "hostnamectl"
+    os_match: str = "openSUSE"
+    which_cmd: str = "which"
 
-    print("Checking dependencies...")
+    print(f"Checks for {os_check_cmd} and {pip_cmd} before proceeding.")
+    result_pip = sb.run([which_cmd, pip_cmd], capture_output=True, text=True)
+    result_systemd = sb.run([which_cmd, os_check_cmd], capture_output=True, text=True)
+
+    if result_pip.returncode != 0 or result_systemd.returncode != 0:
+        print(f"Please install {os_check_cmd} and {pip_cmd} before proceeding.")
+        print(f"The missing packages are systemd-** and python-pip3-**")
+        sys.exit()
+
+    print(f"Checking program dependencies...")
 
     result = sb.run([pip_cmd, "show", dependency], capture_output=True, text=True)
     if result.returncode == 0:
-        print("All dependencies are already installed.")
+        print(f"All dependencies are already installed.")
         return True
 
     print("Detecting operating system...")
     os_result = sb.run([os_check_cmd], capture_output=True, text=True)
-    if os_result.returncode == 0:
-        for line in os_result.stdout.splitlines():
-            if os_match in line:
-                print(f"Detected {os_match}. Installing dependencies with --break-system-packages...")
-                install_result = sb.run([pip_cmd, "install", dependency, "--break-system-packages"], capture_output=True, text=True)
-                if install_result.returncode == 0:
-                    print("Dependencies installed successfully.")
-                    return True
-                else:
-                    print(f"Failed to install {dependency} on {os_match}.")
-                    return False
+    for line in os_result.stdout.splitlines():
+        if os_match in line:
+            print(f"Detected {os_match}. Installing dependencies with --break-system-packages...")
+            install_result = sb.run([pip_cmd, "install", dependency, "--break-system-packages"], capture_output=True, text=True)
+            if install_result.returncode == 0:
+                print("Dependencies installed successfully.")
+                return True
+            else:
+                print(f"Failed to install {dependency} on {os_match}.")
+                return False
 
     print("Installing dependencies...")
     install_result = sb.run([pip_cmd, "install", dependency], capture_output=True, text=True)
     if install_result.returncode == 0:
         print("Dependencies installed successfully.")
         return True
-
-    print("Failed to install dependencies.")
-    return False
+    else:
+        print(f"Failed to install {dependency}.")
+        return False
 
     
     
 
 
-def read_offset_core(yourinput: str) -> int:
+def read_user_input(yourinput: str) -> int:
     
   
     while True:
         try:
             return int(input(yourinput))
         except ValueError:
-            print("Invalid input. Please enter an integer value.")
+            print(f"Invalid input. Please enter an integer value.")
 
 def gpu_core_clock_control() -> None:
     
     
-    clock = read_offset_core("Enter core clock offset in MHz: ")
+    clock = read_user_input(f"Enter core clock offset in MHz: ")
     try:
         nv.nvmlDeviceSetGpcClkVfOffset(gpu_id, clock)
         print(f"Core clock offset set to {clock} MHz.")
@@ -92,7 +100,7 @@ def gpu_core_clock_control() -> None:
 def gpu_memory_clock_control() -> None:
     
     
-    mem_clock = read_offset_core("Enter memory clock offset in MHz: ")
+    mem_clock = read_user_input(f"Enter memory clock offset in MHz: ")
     try:
         nv.nvmlDeviceSetMemClkVfOffset(gpu_id, mem_clock)
         print(f"Memory clock offset set to {mem_clock} MHz.")
@@ -102,10 +110,10 @@ def gpu_memory_clock_control() -> None:
 def fan_control() -> None:
    
     while True:
-        fan_speed = read_offset_core("Enter fan speed in % (0-100): ")
+        fan_speed = read_user_input(f"Enter fan speed in % (0-100): ")
         if 0 <= fan_speed <= 100:
             break
-        print("Invalid input. Fan speed must be between 0 and 100.")
+        print(f"Invalid input. Fan speed must be between 0 and 100.")
     try:
         for i in range(fan_count):
             nv.nvmlDeviceSetFanSpeed_v2(gpu_id, i, fan_speed)
@@ -145,12 +153,12 @@ def menu() -> None:
     check_dependencies()
     
     while True:
-        print("\nMenu:")
-        print("1. Set Core Clock Offset")
-        print("2. Set Memory Clock Offset")
-        print("3. Set Manual Fan Speed")
-        print("4. Auto Fan Control")
-        print("5. Exit")
+        print(f"\nMenu:")
+        print(f"1. Set Core Clock Offset")
+        print(f"2. Set Memory Clock Offset")
+        print(f"3. Set Manual Fan Speed")
+        print(f"4. Auto Fan Control")
+        print(f"5. Exit")
 
         choice = input("Enter your choice: ")
 
@@ -181,15 +189,15 @@ def main():
 if __name__ == "__main__":
     
     if sys.platform == "linux":
-        print("You are running under Linux.")
-    if os.environ.get("XDG_SESSION_TYPE") == "wayland":
-        print("Warning: You are running under Wayland. Root permission is needed.")
+        print(f"You are running under Linux.")
+    if os.environ.get(f"XDG_SESSION_TYPE") == "wayland":
+        print(f"Warning: You are running under Wayland. Root permission is needed.")
     elif os.environ.get("XDG_SESSION_TYPE") == "x11":
-        print("You are running under X11, Root permission is not needed.")
+        print(f"You are running under X11, Root permission is not needed.")
     elif sys.platform == "win32":
-        print("You are running under Windows.")
+        print(f"You are running under Windows.")
     elif sys.platform == "darwin":
-        print("You are running under MacOS.")
+        print(f"You are running under MacOS.")
    
 main()
     
