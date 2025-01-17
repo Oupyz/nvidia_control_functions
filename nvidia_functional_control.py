@@ -6,6 +6,8 @@
 # email: walkonfire81@yahoo.com
 # github: github.com/Oupyz/Elias
 # version 0.2
+# This script must have pip3 installed and hostnamectl installed for the script to function correctly
+# its written to work on openSUSE and most linux distributions but it doesn't check for other distros dependencies as i'am not sure how other distros manage their python packages and modules .
 
 
 import os
@@ -15,34 +17,62 @@ import time
 import subprocess as sb 
 
 nv.nvmlInit()
+
 gpu_id = nv.nvmlDeviceGetHandleByIndex(0)
 gpu_name = nv.nvmlDeviceGetName(gpu_id)
 fan_count = nv.nvmlDeviceGetNumFans(gpu_id)
 driver_version = nv.nvmlSystemGetDriverVersion()
 
 def restarting_script() -> None:
-    script_path: str = os.path.abspath(__file__)
-    cmd = sys.executable
+    
+    script_path: str  = os.path.abspath(__file__)
+    cmd: str = sys.executable
     sb.run([cmd, script_path], capture_output=True, text=True)
-
+    
 def check_dependencies() -> bool:
-    pip3_cmd: str = "pip3"
-    print("Checking For Dependencies")
-    cmd =  sb.run([pip3_cmd, "show", "pynvml"], capture_output=True, text=True)
-    if cmd.returncode == 0:
-         return True 
-    else:
-     install_missing_files =  sb.run([pip3_cmd, "install", "pynvml"])
-     if install_missing_files.returncode == 0:
-         print("Installation the missing dependencies... Restarting The Script")
-         restarting_script()
-         sys.exit(0)
-     else:
-         print("Installation Failed...Exiting.")
-         return False
+  
+    pip_cmd = "pip3"
+    dependency = "pynvml"
+    os_check_cmd = "hostnamectl"
+    os_match = "openSUSE"
+
+    print("Checking dependencies...")
+
+    result = sb.run([pip_cmd, "show", dependency], capture_output=True, text=True)
+    if result.returncode == 0:
+        print("All dependencies are already installed.")
+        return True
+
+    print("Detecting operating system...")
+    os_result = sb.run([os_check_cmd], capture_output=True, text=True)
+    if os_result.returncode == 0:
+        for line in os_result.stdout.splitlines():
+            if os_match in line:
+                print(f"Detected {os_match}. Installing dependencies with --break-system-packages...")
+                install_result = sb.run([pip_cmd, "install", dependency, "--break-system-packages"], capture_output=True, text=True)
+                if install_result.returncode == 0:
+                    print("Dependencies installed successfully.")
+                    return True
+                else:
+                    print(f"Failed to install {dependency} on {os_match}.")
+                    return False
+
+    print("Installing dependencies...")
+    install_result = sb.run([pip_cmd, "install", dependency], capture_output=True, text=True)
+    if install_result.returncode == 0:
+        print("Dependencies installed successfully.")
+        return True
+
+    print("Failed to install dependencies.")
+    return False
+
+    
+    
+
 
 def read_offset_core(yourinput: str) -> int:
-    """Prompt the user for an integer input."""
+    
+  
     while True:
         try:
             return int(input(yourinput))
@@ -50,7 +80,8 @@ def read_offset_core(yourinput: str) -> int:
             print("Invalid input. Please enter an integer value.")
 
 def gpu_core_clock_control() -> None:
-    """Adjust the GPU core clock offset."""
+    
+    
     clock = read_offset_core("Enter core clock offset in MHz: ")
     try:
         nv.nvmlDeviceSetGpcClkVfOffset(gpu_id, clock)
@@ -59,7 +90,8 @@ def gpu_core_clock_control() -> None:
         print(f"Failed to set core clock offset: {str(e)}")
 
 def gpu_memory_clock_control() -> None:
-    """Adjust the GPU memory clock offset."""
+    
+    
     mem_clock = read_offset_core("Enter memory clock offset in MHz: ")
     try:
         nv.nvmlDeviceSetMemClkVfOffset(gpu_id, mem_clock)
@@ -68,7 +100,7 @@ def gpu_memory_clock_control() -> None:
         print(f"Failed to set memory clock offset: {str(e)}")
 
 def fan_control() -> None:
-    """Manually set fan speed."""
+   
     while True:
         fan_speed = read_offset_core("Enter fan speed in % (0-100): ")
         if 0 <= fan_speed <= 100:
@@ -82,7 +114,7 @@ def fan_control() -> None:
         print(f"Failed to set fan speed: {str(e)}")
 
 def auto_fan_control_based_on_temp() -> None:
-    """Automatically adjust fan speed based on GPU temperature."""
+   
     
     print(f"\n""Press Crtl+C for the auto fan speed adjustment based on your gpu temps .")
     
@@ -109,7 +141,7 @@ def auto_fan_control_based_on_temp() -> None:
         print(f"Failed to set fan speed: {str(e)}")
      
 def menu() -> None:
-    """Display the menu and process user input."""
+   
     check_dependencies()
     
     while True:
@@ -138,13 +170,16 @@ def menu() -> None:
             print("Invalid choice. Please try again.")
 
 def main():
+    
     """Main function to display GPU information and launch the menu."""
+    
     print(f"NVIDIA GPU Overclocking Script and Fan Control")
     print(f"Driver Version: {driver_version}")
     print(f"GPU Name: {gpu_name}\n")
     menu()
 
 if __name__ == "__main__":
+    
     if sys.platform == "linux":
         print("You are running under Linux.")
     if os.environ.get("XDG_SESSION_TYPE") == "wayland":
@@ -155,6 +190,6 @@ if __name__ == "__main__":
         print("You are running under Windows.")
     elif sys.platform == "darwin":
         print("You are running under MacOS.")
-
-    main()
+   
+main()
     
